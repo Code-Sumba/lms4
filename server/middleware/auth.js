@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import prisma, { dbQuery } from "../lib/prisma.js";
 
 export const protect = async (req, res, next) => {
   const token = req.headers.authorization?.startsWith("Bearer ")
@@ -8,14 +8,36 @@ export const protect = async (req, res, next) => {
 
   if (!token) return res.status(401).json({ message: "Not authenticated" });
 
+  // Step 1: verify JWT signature/expiry — pure CPU, no DB.
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-    if (!req.user || !req.user.isActive)
-      return res.status(401).json({ message: "User not found or inactive" });
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+
+  // Step 2: confirm the user still exists in the DB.
+  // Kept separate so a transient DB error returns 503 (Service Unavailable)
+  // instead of 401 — preventing the client from logging the user out when
+  // the database is temporarily unreachable.
+  try {
+    const user = await dbQuery(() => prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true, fullName: true, email: true, role: true,
+        instituteId: true, phone: true, rollNumber: true,
+        avatarColor: true, isActive: true, createdAt: true, updatedAt: true,
+      },
+    }));
+
+    if (!user || !user.isActive)
+      return res.status(401).json({ message: "User not found or inactive" });
+
+    req.user = { ...user, _id: user.id };
+    next();
+  } catch (dbErr) {
+    console.error("protect middleware DB error:", dbErr.message);
+    res.status(503).json({ message: "Service temporarily unavailable" });
   }
 };
 

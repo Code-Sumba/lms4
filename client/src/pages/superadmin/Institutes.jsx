@@ -173,7 +173,7 @@ export default function Institutes() {
       )}
 
       {/* Table */}
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader size={20} className="animate-spin text-slate-600" />

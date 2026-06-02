@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Clock, CheckSquare, ArrowRight } from "lucide-react";
+import { BookOpen, Users, Clock, CheckSquare, ArrowRight } from "lucide-react";
 import useAuthStore from "../../store/authStore";
 import api from "../../api/axios";
 
 export default function TeacherDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ classes: 0, pending: 0, approved: 0 });
+  const [stats, setStats] = useState({ classes: 0, students: 0, pending: 0, approved: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,9 +18,9 @@ export default function TeacherDashboard() {
   }, []);
 
   const STATS = [
-    { label: "My Classes",        value: stats.classes, icon: BookOpen,    to: "/teacher/classes",   color: "text-blue-light"  },
-    { label: "Pending Approvals", value: stats.pending, icon: Clock,       to: "/teacher/approvals", color: "text-amber-light" },
-    { label: "Approved Today",    value: stats.approved,icon: CheckSquare, to: "/teacher/approvals", color: "text-green-light" },
+    { label: "My Classes",        value: stats.classes,  icon: BookOpen,    to: "/teacher/classes",   color: "text-blue-light"  },
+    { label: "My Students",       value: stats.students, icon: Users,       to: "/teacher/classes",   color: "text-green-light" },
+    { label: "Pending Approvals", value: stats.pending,  icon: Clock,       to: "/teacher/approvals", color: "text-amber-light" },
   ];
 
   return (

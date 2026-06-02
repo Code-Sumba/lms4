@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Users as UsersIcon, Search, X, CheckCircle, XCircle, Loader, MoreHorizontal, Key, Trash2 } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Plus, Users as UsersIcon, Search, X, CheckCircle, XCircle, Loader, MoreHorizontal, Key, Trash2, Upload, Download } from "lucide-react";
 import api from "../../api/axios";
 
 const ROLE_BADGE = {
@@ -81,6 +81,136 @@ function CreateUserModal({ institutes, onSave, onClose, saving }) {
   );
 }
 
+function BulkImportModal({ institutes, onClose, onDone }) {
+  const fileRef  = useRef();
+  const [rows,     setRows]     = useState([]);
+  const [role,     setRole]     = useState("student");
+  const [instId,   setInstId]   = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [result,   setResult]   = useState(null);
+  const [error,    setError]    = useState("");
+
+  const parseCSV = (text) => {
+    const lines  = text.trim().split("\n").filter(Boolean);
+    const header = lines[0].toLowerCase().split(",").map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+      const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      const obj  = {};
+      header.forEach((h, i) => { obj[h] = cols[i] || ""; });
+      return obj;
+    });
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try { setRows(parseCSV(ev.target.result)); setError(""); setResult(null); }
+      catch { setError("Could not parse CSV."); }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (!rows.length) return;
+    setSaving(true);
+    try {
+      const { data } = await api.post("/superadmin/users/bulk", {
+        users: rows, role, instituteId: instId || null,
+      });
+      setResult(data);
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.message || "Import failed.");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-lg">
+        <div className="modal-header">
+          <span className="text-sm font-semibold text-slate-200">Bulk Import Users</span>
+          <button onClick={onClose} className="btn-ghost btn-sm p-1"><X size={16} /></button>
+        </div>
+        <div className="modal-body space-y-4">
+          <div className="bg-surface rounded-lg p-3 text-xs text-slate-400 space-y-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-slate-300">CSV Format (first row = header):</span>
+              <a href="/sample-users.csv" download="sample-users.csv"
+                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline">
+                <Download size={11} /> Download Sample
+              </a>
+            </div>
+            <code className="block text-green-400">fullName,email,password,rollNumber,phone</code>
+            <div>• role and institute below apply to all rows unless overridden in CSV</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="form-group">
+              <label className="label">Default Role</label>
+              <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+                {["student","teacher","admin"].map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="label">Default Institute</label>
+              <select className="input" value={instId} onChange={(e) => setInstId(e.target.value)}>
+                <option value="">None / CSV column</option>
+                {institutes.map((i) => <option key={i._id} value={i._id}>{i.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="label mb-2 block">Upload CSV File</label>
+            <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} className="hidden" />
+            <button onClick={() => fileRef.current.click()} className="btn-secondary btn-sm gap-1.5 w-full">
+              <Upload size={13} /> Choose CSV File
+            </button>
+          </div>
+
+          {rows.length > 0 && !result && (
+            <div className="bg-surface rounded-lg p-3">
+              <div className="text-xs text-slate-400 mb-2">{rows.length} row{rows.length !== 1 ? "s" : ""} ready:</div>
+              <div className="max-h-36 overflow-y-auto space-y-1">
+                {rows.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="text-slate-600">{i + 1}.</span>
+                    <span>{r.fullname || r.fullName}</span>
+                    <span className="text-slate-500">— {r.email}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle size={13} /> {result.created.length} user{result.created.length !== 1 ? "s" : ""} created
+              </div>
+              {result.skipped.length > 0 && <div className="text-amber-400">{result.skipped.length} skipped</div>}
+              {result.errors.length  > 0 && <div className="text-red-400">{result.errors.length} errors</div>}
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn-secondary btn-sm">{result ? "Close" : "Cancel"}</button>
+          {!result && (
+            <button onClick={handleImport} disabled={!rows.length || saving} className="btn-primary btn-sm gap-1.5">
+              {saving && <Loader size={13} className="animate-spin" />}
+              Import {rows.length > 0 ? `${rows.length} Users` : "Users"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Users() {
   const [users,      setUsers]      = useState([]);
   const [institutes, setInstitutes] = useState([]);
@@ -88,6 +218,7 @@ export default function Users() {
   const [search,     setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [showBulk,   setShowBulk]   = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState("");
   const [menuOpen,   setMenuOpen]   = useState(null);
@@ -153,9 +284,14 @@ export default function Users() {
           <h1 className="page-title">Users</h1>
           <p className="page-sub">All accounts across every institute.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary btn-sm gap-1.5">
-          <Plus size={15} /> Add User
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowBulk(true)} className="btn-secondary btn-sm gap-1.5">
+            <Upload size={15} /> Bulk Import
+          </button>
+          <button onClick={() => setShowCreate(true)} className="btn-primary btn-sm gap-1.5">
+            <Plus size={15} /> Add User
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -180,7 +316,7 @@ export default function Users() {
       </div>
 
       {/* Table */}
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader size={20} className="animate-spin text-slate-600" /></div>
         ) : filtered.length === 0 ? (
@@ -254,6 +390,10 @@ export default function Users() {
           </div>
         )}
       </div>
+
+      {showBulk && (
+        <BulkImportModal institutes={institutes} onClose={() => setShowBulk(false)} onDone={() => load()} />
+      )}
 
       {showCreate && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowCreate(false)}>

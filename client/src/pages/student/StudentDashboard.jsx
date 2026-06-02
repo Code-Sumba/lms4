@@ -18,10 +18,10 @@ export default function StudentDashboard() {
   }, []);
 
   const STATS = [
-    { label: "Experiments Done", value: stats.done,     icon: FlaskConical, to: "/student/experiments", color: "text-blue-light"  },
-    { label: "Books Available",  value: stats.books,    icon: BookOpen,     to: "/student/books",       color: "text-purple-400"  },
+    { label: "My Classes",       value: stats.classes,  icon: BookOpen,     to: "/student/classes",     color: "text-blue-light"  },
+    { label: "Experiments Done", value: stats.done,     icon: FlaskConical, to: "/student/experiments", color: "text-purple-400"  },
     { label: "Exams Taken",      value: stats.exams,    icon: FileText,     to: "/student/results",     color: "text-amber-light" },
-    { label: "Level Progress",   value: `${stats.progress}%`, icon: TrendingUp, to: "/student/experiments", color: "text-green-light" },
+    { label: "Level Progress",   value: `${stats.progress}%`, icon: TrendingUp, to: "/student/classes", color: "text-green-light" },
   ];
 
   return (

@@ -2,10 +2,11 @@ import { create } from "zustand";
 import api from "../api/axios";
 
 const useAuthStore = create((set) => ({
-  user:    JSON.parse(localStorage.getItem("user") || "null"),
-  token:   localStorage.getItem("token") || null,
-  loading: false,
-  error:   null,
+  user:     JSON.parse(localStorage.getItem("user") || "null"),
+  token:    localStorage.getItem("token") || null,
+  hydrated: true, // localStorage reads are synchronous; always true at init
+  loading:  false,
+  error:    null,
 
   login: async (email, password) => {
     set({ loading: true, error: null });
