@@ -10,13 +10,6 @@ const ROLES = [
   { key: "student",    label: "Student",      sub: "Learner account"    },
 ];
 
-const DEMO = {
-  superadmin: { email: "superadmin@motionrobotics.in", password: "super123"   },
-  admin:      { email: "admin@motionrobotics.in",      password: "admin123"   },
-  teacher:    { email: "teacher@motionrobotics.in",    password: "teacher123" },
-  student:    { email: "student@motionrobotics.in",    password: "student123" },
-};
-
 const REDIRECT = {
   superadmin: "/superadmin",
   admin:      "/admin",
@@ -38,13 +31,6 @@ export default function LoginPage() {
     setRole(r);
     setEmail("");
     setPassword("");
-    setLocalErr("");
-    clearError();
-  };
-
-  const fillDemo = () => {
-    setEmail(DEMO[role].email);
-    setPassword(DEMO[role].password);
     setLocalErr("");
     clearError();
   };
@@ -193,23 +179,6 @@ export default function LoginPage() {
               }
             </button>
           </form>
-
-          {/* Demo credentials */}
-          <div className="mt-6 pt-6 border-t border-surface-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-slate-600">Demo account</span>
-              <span className="text-2xs text-slate-600 bg-surface px-2 py-0.5 rounded border border-surface-border">
-                {DEMO[role].email}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="btn-secondary w-full text-xs py-2"
-            >
-              Fill {roleInfo?.label} demo credentials
-            </button>
-          </div>
 
           {/* Mobile back link */}
           <button onClick={() => navigate("/")} className="lg:hidden mt-6 text-xs text-slate-600 hover:text-slate-400 transition-colors w-full text-center">
