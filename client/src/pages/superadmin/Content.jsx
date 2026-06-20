@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, Video, FileText, MoreHorizontal, Edit2, Trash2, X, Loader, ExternalLink } from "lucide-react";
+import { Plus, BookOpen, Video, FileText, MoreHorizontal, Edit2, Trash2, X, Loader, ExternalLink, Globe, School } from "lucide-react";
 import api from "../../api/axios";
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
@@ -29,9 +29,11 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-function ContentForm({ initial, onSave, onClose, saving }) {
+function ContentForm({ initial, onSave, onClose, saving, institutes }) {
   const [form, setForm] = useState(
-    initial || { title: "", description: "", type: "book", url: "", roboticsLevel: 1 }
+    initial
+      ? { ...initial, instituteId: initial.instituteId || "" }
+      : { title: "", description: "", type: "book", url: "", roboticsLevel: 1, instituteId: "" }
   );
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -63,6 +65,16 @@ function ContentForm({ initial, onSave, onClose, saving }) {
           </div>
         </div>
         <div className="form-group">
+          <label className="label">Visible to</label>
+          <select className="input" value={form.instituteId} onChange={(e) => set("instituteId", e.target.value)}>
+            <option value="">All Schools (Global)</option>
+            {institutes.map((inst) => (
+              <option key={inst.id} value={inst.id}>{inst.name} ({inst.code})</option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-600 mt-1">Leave as "All Schools" to make this content visible to every institute.</p>
+        </div>
+        <div className="form-group">
           <label className="label">URL *</label>
           <input className="input" type="url" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder={placeholder[form.type]} />
         </div>
@@ -73,7 +85,7 @@ function ContentForm({ initial, onSave, onClose, saving }) {
       </div>
       <div className="modal-footer">
         <button onClick={onClose} className="btn-secondary btn-sm">Cancel</button>
-        <button onClick={() => onSave(form)} disabled={!form.title || !form.url || saving} className="btn-primary btn-sm gap-1.5">
+        <button onClick={() => onSave({ ...form, instituteId: form.instituteId || null })} disabled={!form.title || !form.url || saving} className="btn-primary btn-sm gap-1.5">
           {saving && <Loader size={13} className="animate-spin" />}
           {initial ? "Save Changes" : "Add Content"}
         </button>
@@ -83,28 +95,35 @@ function ContentForm({ initial, onSave, onClose, saving }) {
 }
 
 export default function Content() {
-  const [items,      setItems]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
-  const [menuOpen,   setMenuOpen]   = useState(null);
-  const [filterType, setFilterType] = useState("");
-  const [filterLevel,setFilterLevel]= useState("");
+  const [items,        setItems]        = useState([]);
+  const [institutes,   setInstitutes]   = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [showCreate,   setShowCreate]   = useState(false);
+  const [editTarget,   setEditTarget]   = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState("");
+  const [menuOpen,     setMenuOpen]     = useState(null);
+  const [filterType,   setFilterType]   = useState("");
+  const [filterLevel,  setFilterLevel]  = useState("");
+  const [filterInst,   setFilterInst]   = useState("");
 
   const load = () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterType)  params.set("type",  filterType);
-    if (filterLevel) params.set("level", filterLevel);
+    if (filterType)  params.set("type",      filterType);
+    if (filterLevel) params.set("level",     filterLevel);
+    if (filterInst)  params.set("institute", filterInst);
     api.get(`/content?${params}`)
       .then(({ data }) => setItems(data))
       .catch(() => setError("Failed to load content."))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [filterType, filterLevel]);
+  useEffect(() => {
+    api.get("/superadmin/institutes").then(({ data }) => setInstitutes(data)).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); }, [filterType, filterLevel, filterInst]);
 
   const handleCreate = async (form) => {
     setSaving(true);
@@ -140,7 +159,7 @@ export default function Content() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Content Library</h1>
-          <p className="page-sub">Manage books, videos and worksheets for all curriculum levels.</p>
+          <p className="page-sub">Manage books, videos and worksheets. Control which school can see each item.</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary btn-sm gap-1.5">
           <Plus size={15} /> Add Content
@@ -164,6 +183,13 @@ export default function Content() {
           <option value="">All levels</option>
           {LEVELS.map((l) => <option key={l} value={l}>Level {l} — {LEVEL_LABELS[l]}</option>)}
         </select>
+        <select className="input w-auto" value={filterInst} onChange={(e) => setFilterInst(e.target.value)}>
+          <option value="">All visibility</option>
+          <option value="global">Global only</option>
+          {institutes.map((inst) => (
+            <option key={inst.id} value={inst.id}>{inst.name}</option>
+          ))}
+        </select>
       </div>
 
       <div className="card p-0">
@@ -185,6 +211,7 @@ export default function Content() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Level</th>
+                  <th>Visible to</th>
                   <th>URL</th>
                   <th></th>
                 </tr>
@@ -208,6 +235,18 @@ export default function Content() {
                       </td>
                       <td>
                         <span className="badge badge-gray">L{item.roboticsLevel} · {LEVEL_LABELS[item.roboticsLevel]}</span>
+                      </td>
+                      <td>
+                        {item.institute ? (
+                          <span className="flex items-center gap-1 text-xs text-slate-300">
+                            <School size={11} className="text-slate-500" />
+                            {item.institute.name}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-slate-500">
+                            <Globe size={11} /> All Schools
+                          </span>
+                        )}
                       </td>
                       <td>
                         <a href={item.url} target="_blank" rel="noopener noreferrer"
@@ -247,12 +286,12 @@ export default function Content() {
 
       {showCreate && (
         <Modal title="Add Content" onClose={() => setShowCreate(false)}>
-          <ContentForm onSave={handleCreate} onClose={() => setShowCreate(false)} saving={saving} />
+          <ContentForm onSave={handleCreate} onClose={() => setShowCreate(false)} saving={saving} institutes={institutes} />
         </Modal>
       )}
       {editTarget && (
         <Modal title="Edit Content" onClose={() => setEditTarget(null)}>
-          <ContentForm initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} saving={saving} />
+          <ContentForm initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} saving={saving} institutes={institutes} />
         </Modal>
       )}
     </div>

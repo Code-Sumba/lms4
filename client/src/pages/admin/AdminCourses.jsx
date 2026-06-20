@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Video, FileText, ExternalLink, Loader } from "lucide-react";
 import api from "../../api/axios";
+import useAuthStore from "../../store/authStore";
 
 const LEVEL_LABELS = {
   1: "Mech Tech", 2: "Electronics", 3: "Electro Mechanical",
@@ -63,16 +64,21 @@ export default function AdminCourses() {
   const [loading,  setLoading]  = useState(true);
   const [activeTab,setActiveTab]= useState("all");
   const [classes,  setClasses]  = useState([]);
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    Promise.all([
-      api.get("/admin/classes"),
-    ]).then(([cls]) => {
-      setClasses(cls.data);
-      const levels = [...new Set(cls.data.map((c) => c.roboticsLevel))];
+    api.get("/admin/classes").then(({ data }) => {
+      setClasses(data);
+      const levels = [...new Set(data.map((c) => c.roboticsLevel))];
       if (levels.length === 0) { setLoading(false); return; }
+      // instituteId is passed via JWT so backend filters global + this school's content
       Promise.all(levels.map((l) => api.get(`/content/level/${l}`))).then((results) => {
-        setContent(results.flatMap((r) => r.data));
+        const seen = new Set();
+        const unique = results.flatMap((r) => r.data).filter((c) => {
+          if (seen.has(c._id)) return false;
+          seen.add(c._id); return true;
+        });
+        setContent(unique);
       }).finally(() => setLoading(false));
     }).catch(() => setLoading(false));
   }, []);
