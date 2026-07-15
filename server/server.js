@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import authRoutes       from "./routes/auth.js";
 import superadminRoutes from "./routes/superadmin.js";
 import adminRoutes      from "./routes/admin.js";
@@ -45,8 +47,39 @@ process.on("SIGTERM", () => prisma.$disconnect().then(() => process.exit(0)));
 
 const app = express();
 
+app.set("trust proxy", 1);   // behind Coolify's nginx/traefik reverse proxy
+app.use(helmet());
+
+// Login brute-force protection: 10 attempts / 15 min per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many login attempts, try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api/auth/login", loginLimiter);
+// Covers both /api/auth/otp/send and /api/auth/otp/verify
+app.use("/api/auth/otp", rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: "Too many OTP requests, try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173,http://localhost:5174")
+  .split(",")
+  .map(url => url.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS policy blocked origin: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(express.json());

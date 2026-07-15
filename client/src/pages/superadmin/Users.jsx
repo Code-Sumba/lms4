@@ -24,8 +24,9 @@ function CreateUserModal({ institutes, onSave, onClose, saving }) {
           <input className="input" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="John Kumar" />
         </div>
         <div className="form-group">
-          <label className="label">Email *</label>
-          <input className="input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="john@school.com" />
+          <label className="label">Email {form.role === "student" ? <span className="text-slate-500 font-normal">(optional)</span> : "*"}</label>
+          <input className="input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)}
+            placeholder={form.role === "student" ? "Leave blank if no email" : "john@school.com"} />
         </div>
         <div className="form-group">
           <label className="label">Password *</label>
@@ -71,7 +72,7 @@ function CreateUserModal({ institutes, onSave, onClose, saving }) {
         <button onClick={onClose} className="btn-secondary btn-sm">Cancel</button>
         <button
           onClick={() => onSave(form)}
-          disabled={!form.fullName || !form.email || !form.password || (form.role !== "superadmin" && !form.instituteId) || saving}
+          disabled={!form.fullName || (form.role !== "student" && !form.email) || !form.password || (form.role !== "superadmin" && !form.instituteId) || saving}
           className="btn-primary btn-sm gap-1.5">
           {saving && <Loader size={13} className="animate-spin" />}
           Create User

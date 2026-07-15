@@ -30,8 +30,8 @@ function StudentForm({ onSave, onClose, saving }) {
           <input className="input" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="John Kumar" />
         </div>
         <div className="form-group">
-          <label className="label">Email *</label>
-          <input className="input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="student@school.com" />
+          <label className="label">Email <span className="text-slate-500 font-normal">(optional)</span></label>
+          <input className="input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="Leave blank if no email" />
         </div>
         <div className="form-group">
           <label className="label">Password *</label>
@@ -58,7 +58,7 @@ function StudentForm({ onSave, onClose, saving }) {
       </div>
       <div className="modal-footer">
         <button onClick={onClose} className="btn-secondary btn-sm">Cancel</button>
-        <button onClick={() => onSave(form)} disabled={!form.fullName || !form.email || !form.password || saving} className="btn-primary btn-sm gap-1.5">
+        <button onClick={() => onSave(form)} disabled={!form.fullName || !form.password || saving} className="btn-primary btn-sm gap-1.5">
           {saving && <Loader size={13} className="animate-spin" />} Add Student
         </button>
       </div>

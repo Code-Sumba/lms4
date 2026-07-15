@@ -35,10 +35,15 @@ export default function LoginPage() {
     clearError();
   };
 
+  const isStudent = role === "student";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalErr("");
-    if (!email.trim() || !password) { setLocalErr("Please enter your email and password."); return; }
+    if (!email.trim() || !password) {
+      setLocalErr(isStudent ? "Please enter your roll number and password." : "Please enter your email and password.");
+      return;
+    }
     try {
       const user = await login(email.trim(), password);
       navigate(REDIRECT[user.role] || "/");
@@ -133,12 +138,12 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div className="form-group">
-              <label className="label">Email address</label>
+              <label className="label">{isStudent ? "Roll Number" : "Email address"}</label>
               <input
-                type="email"
+                type={isStudent ? "text" : "email"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@school.com"
+                placeholder={isStudent ? "Your roll number" : "you@school.com"}
                 className="input"
                 autoComplete="username"
               />
